@@ -63,7 +63,7 @@ const makeIcon = (type, id) => {
         border-radius:50%;box-shadow:0 0 14px ${cfg.shadow},0 2px 6px rgba(0,0,0,0.4);
         display:flex;align-items:center;justify-content:center;
         font-size:10px;font-weight:700;color:${cfg.txt};
-        font-family:'Poppins',sans-serif;cursor:pointer;">${id}</div>
+        font-family:var(--font-display);cursor:pointer;">${id}</div>
     </div>`,
     iconSize:[28,28], iconAnchor:[14,14], popupAnchor:[0,-16],
   });
@@ -102,19 +102,18 @@ const updateMarkers = (pathIds = []) => {
   });
 };
 
-// ==================== Global popup handlers ====================
 window.setStart = (id) => {
   AppState.startNodeId = id;
   document.getElementById('select-start').value = id;
   updateMarkers();
-  showToast(`🟢 ${getNodeName(id)} → Titik Awal`, 'success');
+  showToast(`🟢 ${getNodeName(id)} Titik Awal`, 'success');
   AppState.map.closePopup();
 };
 window.setEnd = (id) => {
   AppState.endNodeId = id;
   document.getElementById('select-end').value = id;
   updateMarkers();
-  showToast(`🟡 ${getNodeName(id)} → Tujuan`, 'info');
+  showToast(`🟡 ${getNodeName(id)} Tujuan`, 'info');
   AppState.map.closePopup();
 };
 
@@ -128,12 +127,15 @@ window.setTransportMode = (mode, btn) => {
 
   const labels = { foot:'🚶 Jalan Kaki', bike:'🏍️ Motor', driving:'🚗 Mobil' };
   showToast(`Mode: ${labels[mode]}`, 'info');
+
+  // LANGSUNG RENDER ULANG RESULT JIKA PATH SUDAH ADA
+  if (AppState.currentPath) {
+    renderResult(AppState.currentPath);
+  }
 };
 
-// OSRM profile mapping
 const osrmProfile = { foot:'foot', bike:'bike', driving:'driving' };
 
-// ==================== Swap locations ====================
 window.swapLocations = () => {
   const tmp = AppState.startNodeId;
   AppState.startNodeId = AppState.endNodeId;
@@ -144,18 +146,12 @@ window.swapLocations = () => {
   if (AppState.startNodeId || AppState.endNodeId) showToast('↕ Lokasi ditukar', 'info');
 };
 
-// ==================== Panel expand ====================
 window.togglePanelExpand = () => {
   AppState.panelExpanded = !AppState.panelExpanded;
   document.getElementById('panel-expanded').classList.toggle('open', AppState.panelExpanded);
 };
 
-const openPanel = () => {
-  AppState.panelExpanded = true;
-  document.getElementById('panel-expanded').classList.add('open');
-};
-
-// ==================== Find Path ====================
+// ==================== Find Path (CORE) ====================
 window.findPath = async () => {
   const startId = parseInt(document.getElementById('select-start').value);
   const endId   = parseInt(document.getElementById('select-end').value);
@@ -163,6 +159,9 @@ window.findPath = async () => {
   if (!startId || !endId)       { showToast('⚠️ Pilih titik awal dan tujuan', 'error'); return; }
   if (startId === endId)        { showToast('⚠️ Awal dan tujuan tidak boleh sama', 'error'); return; }
 
+  // KUNCI: Tambahkan class state agar panel bawah terkunci (compact)
+  document.body.classList.add('is-searching');
+  
   AppState.startNodeId = startId;
   AppState.endNodeId   = endId;
   showLoading(true, 'Algoritma A* sedang berjalan...');
@@ -170,12 +169,10 @@ window.findPath = async () => {
   clearResult();
 
   try {
-    // 1. A* backend
     const result = await API.findShortestPath(startId, endId);
     AppState.currentPath = result;
     updateMarkers(result.path);
 
-    // 2. OSRM — hanya start & goal untuk rute jalan nyata
     const sn = result.path_names[0];
     const gn = result.path_names[result.path_names.length - 1];
     const profile = osrmProfile[AppState.transportMode] || 'foot';
@@ -193,32 +190,63 @@ window.findPath = async () => {
       roadCoords = result.path_names.map(p => ({ lat:p.lat, lng:p.lng }));
     }
 
-    // 3. Animasi
+    // Animasi dieksekusi dengan mengirimkan AppState.transportMode
     Animation.animatePolyline(AppState.map, roadCoords);
     setTimeout(() => Animation.zoomToRoute(AppState.map, roadCoords), 300);
-    setTimeout(() => Animation.animateMarkerAlongPath(AppState.map, roadCoords, (si) => {
-      const ratio = si / roadCoords.length;
-      const ni = Math.floor(ratio * result.path_names.length);
-      document.querySelectorAll('.path-step').forEach((el, i) => el.classList.toggle('active', i === ni));
-    }), 1000);
+    setTimeout(() => Animation.animateMarkerAlongPath(
+      AppState.map, 
+      roadCoords, 
+      (si) => {
+        const ratio = si / roadCoords.length;
+        const ni = Math.floor(ratio * result.path_names.length);
+        document.querySelectorAll('.path-step').forEach((el, i) => el.classList.toggle('active', i === ni));
+      },
+      AppState.transportMode // Pass mode transportasi ke animasi
+    ), 1000);
 
-    // 4. Render result
     renderResult(result);
-    openPanel();
+    // openPanel(); <--- Dihapus agar panel tetap di bawah (tidak menutupi map)
     showResetFab(true);
-    showToast(`✅ ${result.path.length} lokasi · ${result.distance}m · ${result.estimated_time}`, 'success');
+    
+    const dynamicTime = calculateEstimatedTime(result.distance, AppState.transportMode);
+    showToast(`✅ ${result.path.length} lokasi · ${result.distance}m · ${dynamicTime}`, 'success');
 
   } catch(err) {
     showToast(`❌ ${err.message}`, 'error');
   } finally {
+    // KUNCI: Hapus class state setelah proses komputasi selesai
+    document.body.classList.remove('is-searching');
     showLoading(false);
   }
 };
 
 // ==================== Render Result ====================
+// Helper untuk menghitung estimasi waktu di frontend
+const calculateEstimatedTime = (distanceMeters, mode) => {
+  const speeds = {
+    foot: 80,      // ~4.8 km/jam
+    bike: 300,     // ~18 km/jam
+    driving: 400   // ~24 km/jam
+  };
+  
+  const speed = speeds[mode] || speeds.foot;
+  const minutes = Math.ceil(distanceMeters / speed);
+
+  if (minutes < 1) return '< 1 mnt';
+  if (minutes === 1) return '1 mnt';
+  if (minutes < 60) return `${minutes} mnt`;
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  if (remainingMinutes === 0) return `${hours} jam`;
+  return `${hours} jam ${remainingMinutes} mnt`;
+};
+
 const renderResult = (result) => {
   const speedLabel = { foot:'Berjalan kaki', bike:'Berkendara motor', driving:'Berkendara mobil' };
   const panel = document.getElementById('result-panel');
+  
+  const dynamicTime = calculateEstimatedTime(result.distance, AppState.transportMode);
 
   panel.innerHTML = `
     <div class="stats-grid">
@@ -229,7 +257,7 @@ const renderResult = (result) => {
       </div>
       <div class="stat-card" style="animation-delay:.06s">
         <div class="stat-lbl">Waktu</div>
-        <div class="stat-val amber sm">${result.estimated_time}</div>
+        <div class="stat-val amber sm">${dynamicTime}</div>
         <div class="stat-unit">${speedLabel[AppState.transportMode]}</div>
       </div>
       <div class="stat-card" style="animation-delay:.12s">
@@ -259,8 +287,12 @@ const renderResult = (result) => {
 const clearResult = () => {
   document.getElementById('result-panel').innerHTML = `
     <div class="empty-state">
-      <div class="empty-icon">⚡</div>
-      <div class="empty-title">Menghitung...</div>
+      <div class="empty-icon">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.35">
+           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+        </svg>
+      </div>
+      <div class="empty-title">Menghitung rute optimal...</div>
     </div>`;
 };
 
@@ -271,7 +303,6 @@ window.flyToNode = (id) => {
   setTimeout(() => m.openPopup(), 1100);
 };
 
-// ==================== Reset ====================
 window.resetRoute = () => {
   AppState.startNodeId = null;
   AppState.endNodeId   = null;
@@ -282,17 +313,21 @@ window.resetRoute = () => {
   updateMarkers();
   document.getElementById('result-panel').innerHTML = `
     <div class="empty-state">
-      <div class="empty-icon">🗺️</div>
+      <div class="empty-icon">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.35">
+          <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+          <line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
+        </svg>
+      </div>
       <div class="empty-title">Siap Navigasi</div>
       <div class="empty-desc">Pilih titik awal & tujuan lalu tekan Cari</div>
     </div>`;
   AppState.panelExpanded = false;
   document.getElementById('panel-expanded').classList.remove('open');
   showResetFab(false);
-  showToast('🔄 Rute direset', 'info');
+  showToast('Rute direset', 'info');
 };
 
-// ==================== Dropdowns ====================
 const fillDropdowns = (nodes) => {
   const s = document.getElementById('select-start');
   const e = document.getElementById('select-end');
@@ -306,7 +341,6 @@ const fillDropdowns = (nodes) => {
   e.addEventListener('change', () => { AppState.endNodeId   = parseInt(e.value)||null; updateMarkers(); });
 };
 
-// ==================== Location List ====================
 const fillLocations = (nodes) => {
   const icons = ['🏛','🏢','🏗','📚','⚽','🔬','🏥','🕌','💧','🎓','🏟','⚙️','📐','🌿','🏋','🖥','🌊','💊','🔭','🌾','🏀','🚪','🏟'];
   document.getElementById('location-list').innerHTML = nodes.map((n,i) => `
@@ -326,7 +360,6 @@ const fillLocations = (nodes) => {
   });
 };
 
-// ==================== UI helpers ====================
 window.toggleLocationPanel = () => {
   AppState.locationPanelOpen = !AppState.locationPanelOpen;
   document.getElementById('location-panel').classList.toggle('open', AppState.locationPanelOpen);
@@ -336,12 +369,12 @@ window.toggleMapLayer = () => {
   tiles[AppState.tileIndex].remove();
   AppState.tileIndex = (AppState.tileIndex + 1) % tiles.length;
   tiles[AppState.tileIndex].addTo(AppState.map);
-  const names = ['🌑 Dark', '🗺️ Street', '🛰️ Satellite'];
+  const names = ['Dark', 'Street', 'Satellite'];
   showToast(`Layer: ${names[AppState.tileIndex]}`, 'info');
 };
 
 window.getCurrentLocation = () => {
-  if (!navigator.geolocation) { showToast('❌ Geolocation tidak didukung', 'error'); return; }
+  if (!navigator.geolocation) { showToast(' Geolocation tidak didukung', 'error'); return; }
   navigator.geolocation.getCurrentPosition(pos => {
     const { latitude: lat, longitude: lng } = pos.coords;
     AppState.map.flyTo([lat, lng], 17, { duration:1.5 });
@@ -349,9 +382,9 @@ window.getCurrentLocation = () => {
       className:'',
       html:`<div style="width:14px;height:14px;background:#3b82f6;border:3px solid #fff;border-radius:50%;box-shadow:0 0 16px #3b82f6;"></div>`,
       iconSize:[14,14], iconAnchor:[7,7],
-    }) }).addTo(AppState.map).bindPopup('📍 Lokasi Anda').openPopup();
-    showToast('📡 Lokasi ditemukan', 'success');
-  }, () => showToast('❌ Tidak bisa akses lokasi', 'error'));
+    }) }).addTo(AppState.map).bindPopup(' Lokasi Anda').openPopup();
+    showToast(' Lokasi ditemukan', 'success');
+  }, () => showToast(' Tidak bisa akses lokasi', 'error'));
 };
 
 window.zoomToRoute = () => {
@@ -367,7 +400,6 @@ const showResetFab = (v) => {
   document.getElementById('reset-fab').classList.toggle('visible', v);
 };
 
-// ==================== Toast ====================
 window.showToast = (msg, type='info') => {
   const c = document.getElementById('toast-container');
   const ic = { success:'✅', error:'❌', info:'💡' };
@@ -378,14 +410,12 @@ window.showToast = (msg, type='info') => {
   setTimeout(() => t.remove(), 3700);
 };
 
-// ==================== Loading ====================
 const showLoading = (show, sub='') => {
   document.getElementById('loading-overlay').classList.toggle('active', show);
   document.getElementById('search-btn').disabled = show;
   if (sub) document.getElementById('loading-sub').textContent = sub;
 };
 
-// ==================== Init App ====================
 const initApp = async () => {
   showLoading(true, 'Memuat data kampus UNIB...');
   try {
@@ -396,9 +426,9 @@ const initApp = async () => {
     addMarkers(nodes);
     fillDropdowns(nodes);
     fillLocations(nodes);
-    showToast(`🗺️ ${nodes.length} lokasi UNIB dimuat`, 'success');
+    showToast(` ${nodes.length} lokasi UNIB dimuat`, 'success');
   } catch(err) {
-    showToast(`❌ Gagal memuat: ${err.message}`, 'error');
+    showToast(`Gagal memuat: ${err.message}`, 'error');
   } finally {
     showLoading(false);
   }

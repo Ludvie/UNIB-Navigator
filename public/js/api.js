@@ -63,8 +63,7 @@ const API = {
    */
   getAccuracyTest: async () => {
     const response = await fetch(`${BASE_URL}/api/accuracy-test`);
-    const data = await response.json();
-    return data;
+    return await response.json();
   },
 };
 

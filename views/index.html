@@ -2,69 +2,102 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UNIB Navigator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>UNIB Navigator | A* Pathfinding</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="/css/style.css" />
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300d2b4' stroke-width='2'><circle cx='12' cy='12' r='10'/><polygon points='10 8 16 12 10 16 10 8'/></svg>" />
 </head>
 <body>
 
 <div id="map"></div>
 
-<!-- ===== TOP NAV (minimal) ===== -->
 <nav class="topnav">
   <div class="topnav-brand">
-    <div class="brand-logo">🧭</div>
-    <div>
-      <div class="brand-name">UNIB Navigator</div>
-      <div class="brand-sub">A* Pathfinding System</div>
+    <div class="brand-logo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <h1 class="brand-name">UNIB Navigator</h1>
+      <span class="brand-sub">A* Pathfinding System</span>
     </div>
   </div>
   <div class="topnav-actions">
-    <button class="icon-btn" onclick="toggleMapLayer()" title="Ganti Layer">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+    <button class="icon-btn" onclick="toggleMapLayer()" title="Ganti Layer Peta">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+        <polyline points="2 17 12 22 22 17"/>
+        <polyline points="2 12 12 17 22 12"/>
+      </svg>
     </button>
     <button class="icon-btn" onclick="getCurrentLocation()" title="Lokasi Saya">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="9" stroke-dasharray="4 2"/></svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
+      </svg>
     </button>
     <button class="icon-btn" id="loc-panel-btn" onclick="toggleLocationPanel()" title="Semua Lokasi">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="9" y1="6" x2="20" y2="6"/>
+        <line x1="9" y1="12" x2="20" y2="12"/>
+        <line x1="9" y1="18" x2="20" y2="18"/>
+        <circle cx="4" cy="6" r="1" fill="currentColor"/>
+        <circle cx="4" cy="12" r="1" fill="currentColor"/>
+        <circle cx="4" cy="18" r="1" fill="currentColor"/>
+      </svg>
     </button>
-    <button class="icon-btn" onclick="zoomToRoute()" title="Zoom Rute">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+    <button class="icon-btn" onclick="zoomToRoute()" title="Zoom ke Rute">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+      </svg>
     </button>
   </div>
 </nav>
 
-<!-- ===== FLOATING BOTTOM PANEL ===== -->
 <div class="bottom-panel" id="bottom-panel">
-
-  <!-- Drag Handle -->
   <div class="panel-handle" onclick="togglePanelExpand()">
     <div class="handle-bar"></div>
   </div>
 
-  <!-- COMPACT ROW (always visible) -->
   <div class="panel-compact">
-
-    <!-- Transport Mode Pills -->
     <div class="transport-pills">
       <button class="transport-pill active" data-mode="foot" onclick="setTransportMode('foot', this)">
-        <span class="pill-icon">🚶</span>
+        <span class="pill-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="4" r="2"/>
+            <path d="M9 22l1-6-2-3 3-3 2 4h3l-1-3"/>
+            <path d="M6 13l2-4 3 1"/>
+          </svg>
+        </span>
         <span class="pill-label">Jalan Kaki</span>
       </button>
       <button class="transport-pill" data-mode="bike" onclick="setTransportMode('bike', this)">
-        <span class="pill-icon">🏍️</span>
+        <span class="pill-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="5.5" cy="17.5" r="3.5"/>
+            <circle cx="18.5" cy="17.5" r="3.5"/>
+            <path d="M15 6h-2L9 17H5"/>
+            <path d="M15 6l3 3h2"/>
+            <path d="M10 10h4l3.5 7.5"/>
+          </svg>
+        </span>
         <span class="pill-label">Motor</span>
       </button>
       <button class="transport-pill" data-mode="driving" onclick="setTransportMode('driving', this)">
-        <span class="pill-icon">🚗</span>
+        <span class="pill-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v9a2 2 0 0 1-2 2h-2"/>
+            <circle cx="7.5" cy="17.5" r="2.5"/>
+            <circle cx="17.5" cy="17.5" r="2.5"/>
+          </svg>
+        </span>
         <span class="pill-label">Mobil</span>
       </button>
     </div>
 
-    <!-- Route Inputs Row -->
     <div class="inputs-row">
       <div class="input-wrap">
         <div class="input-dot start-dot"></div>
@@ -73,8 +106,11 @@
         </select>
       </div>
 
-      <button class="swap-btn" onclick="swapLocations()" title="Tukar">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4m0 0L3 8m4-4 4 4"/><path d="M17 8v12m0 0 4-4m-4 4-4-4"/></svg>
+      <button class="swap-btn" onclick="swapLocations()" title="Tukar Lokasi">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 16V4m0 0L3 8m4-4 4 4"/>
+          <path d="M17 8v12m0 0 4-4m-4 4-4-4"/>
+        </svg>
       </button>
 
       <div class="input-wrap">
@@ -85,55 +121,80 @@
       </div>
 
       <button class="go-btn" id="search-btn" onclick="findPath()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
         <span>Cari</span>
       </button>
     </div>
   </div>
 
-  <!-- EXPANDED RESULT (toggled) -->
   <div class="panel-expanded" id="panel-expanded">
     <div class="expand-divider"></div>
     <div id="result-panel" class="result-content">
       <div class="empty-state">
-        <div class="empty-icon">🗺️</div>
+        <div class="empty-icon">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.35">
+            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+            <line x1="8" y1="2" x2="8" y2="18"/>
+            <line x1="16" y1="6" x2="16" y2="22"/>
+          </svg>
+        </div>
         <div class="empty-title">Siap Navigasi</div>
-        <div class="empty-desc">Pilih titik awal & tujuan lalu tekan Cari</div>
+        <div class="empty-desc">Pilih titik awal &amp; tujuan lalu tekan Cari</div>
       </div>
     </div>
   </div>
-
 </div>
 
-<!-- ===== LOCATION LIST PANEL ===== -->
 <div class="location-panel" id="location-panel">
   <div class="loc-panel-header">
     <div class="loc-panel-title">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+        <circle cx="12" cy="10" r="3"/>
+      </svg>
       Semua Lokasi UNIB
     </div>
-    <button class="close-btn" onclick="toggleLocationPanel()">✕</button>
+    <button class="close-btn" onclick="toggleLocationPanel()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
   </div>
   <div class="loc-search-wrap">
-    <svg class="loc-search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <svg class="loc-search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/>
+      <path d="m21 21-4.35-4.35"/>
+    </svg>
     <input type="text" id="location-search" class="loc-search-input" placeholder="Cari lokasi..." autocomplete="off" />
   </div>
   <div class="location-list" id="location-list"></div>
 </div>
 
-<!-- ===== ZOOM CONTROLS ===== -->
 <div class="zoom-controls">
-  <button class="zoom-btn" onclick="AppState.map.zoomIn()">＋</button>
+  <button class="zoom-btn" onclick="AppState.map.zoomIn()" title="Zoom In">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <line x1="12" y1="5" x2="12" y2="19"/>
+      <line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  </button>
   <div class="zoom-divider"></div>
-  <button class="zoom-btn" onclick="AppState.map.zoomOut()">－</button>
+  <button class="zoom-btn" onclick="AppState.map.zoomOut()" title="Zoom Out">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  </button>
 </div>
 
-<!-- ===== RESET BUTTON (appears after route found) ===== -->
 <button class="reset-fab" id="reset-fab" onclick="resetRoute()" title="Reset Rute">
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="1 4 1 10 7 10"/>
+    <path d="M3.51 15a9 9 0 1 0 .49-3.51"/>
+  </svg>
 </button>
 
-<!-- ===== LOADING ===== -->
 <div class="loading-overlay" id="loading-overlay">
   <div class="loading-card">
     <div class="loading-spinner"></div>
@@ -142,7 +203,6 @@
   </div>
 </div>
 
-<!-- ===== TOAST ===== -->
 <div class="toast-stack" id="toast-container"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

@@ -12,22 +12,16 @@
  * d = sqrt((x2-x1)^2 + (y2-y1)^2)
  */
 
-/**
- * Kelas MinHeap (Priority Queue) untuk efisiensi A*
- * Menyimpan node berdasarkan nilai f(n) terkecil
- */
 class MinHeap {
   constructor() {
     this.heap = [];
   }
 
-  // Tambah node ke heap
   push(node) {
     this.heap.push(node);
     this._bubbleUp(this.heap.length - 1);
   }
 
-  // Ambil node dengan f(n) terkecil
   pop() {
     if (this.heap.length === 0) return null;
     const min = this.heap[0];
@@ -39,12 +33,10 @@ class MinHeap {
     return min;
   }
 
-  // Cek apakah heap kosong
   isEmpty() {
     return this.heap.length === 0;
   }
 
-  // Bubble up untuk mempertahankan properti min-heap
   _bubbleUp(index) {
     while (index > 0) {
       const parentIndex = Math.floor((index - 1) / 2);
@@ -54,7 +46,6 @@ class MinHeap {
     }
   }
 
-  // Sink down untuk mempertahankan properti min-heap
   _sinkDown(index) {
     const length = this.heap.length;
     while (true) {
@@ -75,23 +66,12 @@ class MinHeap {
   }
 }
 
-/**
- * Menghitung jarak Euclidean antara dua titik koordinat
- * Mengkonversi koordinat lat/lng ke meter (aproksimasi)
- *
- * @param {Object} nodeA - Node A dengan latitude dan longitude
- * @param {Object} nodeB - Node B dengan latitude dan longitude
- * @returns {number} Jarak dalam meter
- */
 const euclideanDistance = (nodeA, nodeB) => {
-  // Konversi derajat ke radian
   const toRad = (deg) => deg * (Math.PI / 180);
-
-  const R = 6371000; // Radius bumi dalam meter
+  const R = 6371000; 
   const dLat = toRad(nodeB.latitude - nodeA.latitude);
   const dLon = toRad(nodeB.longitude - nodeA.longitude);
 
-  // Haversine formula untuk jarak geodetik yang lebih akurat
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(toRad(nodeA.latitude)) *
@@ -103,46 +83,20 @@ const euclideanDistance = (nodeA, nodeB) => {
   return R * c;
 };
 
-/**
- * Algoritma A* untuk mencari jalur terpendek
- *
- * @param {Array} nodes - Array semua node [{id_node, nama_tempat, latitude, longitude}]
- * @param {Array} edges - Array semua edge [{from_node, to_node, weight}]
- * @param {number} startId - ID node awal
- * @param {number} goalId - ID node tujuan
- * @returns {Object} Hasil: {path, totalDistance, nodesVisited, executionTime}
- */
 const astar = (nodes, edges, startId, goalId) => {
   const startTime = Date.now();
 
-  // Validasi input
-  if (!startId || !goalId) {
-    throw new Error('Start dan goal node harus ditentukan');
-  }
+  if (!startId || !goalId) throw new Error('Start dan goal node harus ditentukan');
+  if (startId === goalId) throw new Error('Node awal dan tujuan tidak boleh sama');
 
-  if (startId === goalId) {
-    throw new Error('Node awal dan tujuan tidak boleh sama');
-  }
-
-  // Buat map node berdasarkan ID untuk akses cepat O(1)
   const nodeMap = {};
-  nodes.forEach((node) => {
-    nodeMap[node.id_node] = node;
-  });
+  nodes.forEach((node) => { nodeMap[node.id_node] = node; });
 
-  // Validasi node awal dan tujuan ada di graph
-  if (!nodeMap[startId]) {
-    throw new Error(`Node awal dengan ID ${startId} tidak ditemukan`);
-  }
-  if (!nodeMap[goalId]) {
-    throw new Error(`Node tujuan dengan ID ${goalId} tidak ditemukan`);
-  }
+  if (!nodeMap[startId]) throw new Error(`Node awal dengan ID ${startId} tidak ditemukan`);
+  if (!nodeMap[goalId]) throw new Error(`Node tujuan dengan ID ${goalId} tidak ditemukan`);
 
-  // Buat adjacency list dari edges untuk akses cepat
   const adjacency = {};
-  nodes.forEach((node) => {
-    adjacency[node.id_node] = [];
-  });
+  nodes.forEach((node) => { adjacency[node.id_node] = []; });
 
   edges.forEach((edge) => {
     if (adjacency[edge.from_node]) {
@@ -153,42 +107,31 @@ const astar = (nodes, edges, startId, goalId) => {
     }
   });
 
-  // Inisialisasi data struktur A*
-  const openSet = new MinHeap(); // Priority queue untuk node yang akan dieksplorasi
-  const closedSet = new Set(); // Set node yang sudah dieksplorasi
-  const gScore = {}; // g(n): biaya aktual dari start ke node n
-  const fScore = {}; // f(n) = g(n) + h(n)
-  const cameFrom = {}; // Untuk rekonstruksi jalur
+  const openSet = new MinHeap();
+  const closedSet = new Set();
+  const gScore = {};
+  const fScore = {};
+  const cameFrom = {};
 
-  // Inisialisasi semua score sebagai Infinity
   nodes.forEach((node) => {
     gScore[node.id_node] = Infinity;
     fScore[node.id_node] = Infinity;
   });
 
-  // Set nilai awal untuk node start
   gScore[startId] = 0;
   const hStart = euclideanDistance(nodeMap[startId], nodeMap[goalId]);
   fScore[startId] = hStart;
 
-  // Masukkan node start ke open set
-  openSet.push({
-    id: startId,
-    f: fScore[startId],
-    g: 0,
-  });
+  openSet.push({ id: startId, f: fScore[startId], g: 0 });
 
-  const nodesVisited = []; // Catat urutan node yang dikunjungi
+  const nodesVisited = [];
 
-  // Loop utama A*
   while (!openSet.isEmpty()) {
     const current = openSet.pop();
     const currentId = current.id;
 
-    // Catat node yang dikunjungi
     nodesVisited.push(currentId);
 
-    // Jika sudah mencapai tujuan, rekonstruksi jalur
     if (currentId === goalId) {
       const path = reconstructPath(cameFrom, currentId);
       const executionTime = Date.now() - startTime;
@@ -202,34 +145,22 @@ const astar = (nodes, edges, startId, goalId) => {
       };
     }
 
-    // Tandai node sebagai sudah dieksplorasi
     closedSet.add(currentId);
-
-    // Eksplorasi tetangga (neighbor nodes)
     const neighbors = adjacency[currentId] || [];
 
     for (const neighbor of neighbors) {
       const neighborId = neighbor.nodeId;
-
-      // Skip jika tetangga sudah dieksplorasi
       if (closedSet.has(neighborId)) continue;
 
-      // Hitung g(n) untuk tetangga melalui node saat ini
       const tentativeG = gScore[currentId] + neighbor.weight;
 
-      // Jika jalur ini lebih baik dari sebelumnya
       if (tentativeG < gScore[neighborId]) {
-        // Update jalur terbaik
         cameFrom[neighborId] = currentId;
         gScore[neighborId] = tentativeG;
 
-        // Hitung h(n) menggunakan Euclidean distance
         const h = euclideanDistance(nodeMap[neighborId], nodeMap[goalId]);
-
-        // Hitung f(n) = g(n) + h(n)
         fScore[neighborId] = tentativeG + h;
 
-        // Masukkan ke open set
         openSet.push({
           id: neighborId,
           f: fScore[neighborId],
@@ -239,7 +170,6 @@ const astar = (nodes, edges, startId, goalId) => {
     }
   }
 
-  // Jika open set kosong dan tujuan belum tercapai
   return {
     path: [],
     totalDistance: 0,
@@ -250,14 +180,6 @@ const astar = (nodes, edges, startId, goalId) => {
   };
 };
 
-/**
- * Rekonstruksi jalur dari node tujuan ke node awal
- * Menggunakan backtracking dari map cameFrom
- *
- * @param {Object} cameFrom - Map parent setiap node
- * @param {number} currentId - Node tujuan
- * @returns {Array} Array ID node yang membentuk jalur
- */
 const reconstructPath = (cameFrom, currentId) => {
   const path = [currentId];
   while (cameFrom[currentId] !== undefined) {
@@ -268,15 +190,22 @@ const reconstructPath = (cameFrom, currentId) => {
 };
 
 /**
- * Menghitung estimasi waktu berdasarkan jarak
- * Kecepatan rata-rata berjalan kaki: 80 meter/menit
+ * Menghitung estimasi waktu berdasarkan jarak dan mode transportasi
  *
  * @param {number} distanceMeters - Jarak dalam meter
+ * @param {string} mode - Mode transportasi ('foot', 'bike', 'driving')
  * @returns {string} Estimasi waktu dalam format string
  */
-const estimateTime = (distanceMeters) => {
-  const walkingSpeed = 80; // meter per menit
-  const minutes = Math.ceil(distanceMeters / walkingSpeed);
+const estimateTime = (distanceMeters, mode = 'foot') => {
+  // Kecepatan rata-rata (meter per menit) di lingkungan kampus/kota
+  const speeds = {
+    foot: 80,      // ~4.8 km/jam (Jalan kaki biasa)
+    bike: 300,     // ~18 km/jam (Motor santai dalam kampus)
+    driving: 400   // ~24 km/jam (Mobil dalam kampus)
+  };
+
+  const speed = speeds[mode] || speeds.foot;
+  const minutes = Math.ceil(distanceMeters / speed);
 
   if (minutes < 1) return 'Kurang dari 1 menit';
   if (minutes === 1) return '1 menit';

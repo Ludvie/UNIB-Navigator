@@ -2,7 +2,7 @@
  * public/js/animation.js
  * Modul animasi untuk visualisasi jalur terpendek
  * - Animasi polyline yang muncul perlahan
- * - Marker bergerak mengikuti jalur
+ * - Marker bergerak mengikuti jalur dengan dinamika kecepatan
  * - Smooth zoom animation
  */
 
@@ -14,12 +14,17 @@ const Animation = {
   /**
    * Buat moving marker (kendaraan yang bergerak di jalur)
    * @param {Object} map - Leaflet map instance
+   * @param {string} mode - Mode kendaraan (foot, bike, driving)
    * @returns {Object} Leaflet marker
    */
-  createMovingMarker: (map) => {
+  createMovingMarker: (map, mode = 'foot') => {
     if (Animation.movingMarker) {
       Animation.movingMarker.remove();
     }
+
+    // Pemilihan Ikon berdasarkan transportMode
+    const modeIcons = { foot: '🚶', bike: '🏍️', driving: '🚗' };
+    const activeIcon = modeIcons[mode] || '🚶';
 
     const icon = L.divIcon({
       className: 'moving-marker',
@@ -36,7 +41,7 @@ const Animation = {
           justify-content: center;
           font-size: 14px;
           animation: markerBounce 1s ease infinite;
-        ">🚶</div>
+        ">${activeIcon}</div>
       `,
       iconSize: [32, 32],
       iconAnchor: [16, 16],
@@ -54,7 +59,6 @@ const Animation = {
    * @returns {Object} Leaflet polyline
    */
   animatePolyline: (map, latlngs) => {
-    // Hapus polyline lama jika ada
     if (window._routePolyline) {
       window._routePolyline.remove();
       window._routePolyline = null;
@@ -64,7 +68,6 @@ const Animation = {
       window._routePolylineBg = null;
     }
 
-    // Background polyline (glowing effect)
     const bgPolyline = L.polyline(latlngs, {
       color: 'rgba(20, 184, 166, 0.25)',
       weight: 12,
@@ -73,13 +76,11 @@ const Animation = {
     }).addTo(map);
     window._routePolylineBg = bgPolyline;
 
-    // Animasi polyline utama menggunakan segmen bertahap
     const totalPoints = latlngs.length;
     let currentSegment = 0;
 
     const drawNextSegment = () => {
       if (currentSegment >= totalPoints - 1) {
-        // Animasi selesai
         Animation.isAnimating = false;
         return;
       }
@@ -95,7 +96,6 @@ const Animation = {
         }
       ).addTo(map);
 
-      // Fade in segment
       let opacity = 0;
       const fadeIn = setInterval(() => {
         opacity += 0.1;
@@ -105,7 +105,6 @@ const Animation = {
 
       currentSegment++;
 
-      // Simpan referensi untuk cleanup
       if (!window._routeSegments) window._routeSegments = [];
       window._routeSegments.push(segmentLine);
 
@@ -117,7 +116,6 @@ const Animation = {
     Animation.isAnimating = true;
     drawNextSegment();
 
-    // Buat polyline final untuk referensi
     const finalPolyline = L.polyline(latlngs, {
       color: 'transparent',
       weight: 0,
@@ -128,26 +126,34 @@ const Animation = {
   },
 
   /**
-   * Animasi marker bergerak mengikuti jalur
+   * Animasi marker bergerak mengikuti jalur dengan dinamika kecepatan
    * @param {Object} map - Leaflet map instance
    * @param {Array} coordinates - Array {lat, lng}
    * @param {Function} onProgress - Callback setiap langkah (nodeIndex)
+   * @param {string} mode - Mode transportasi (foot, bike, driving)
    */
-  animateMarkerAlongPath: (map, coordinates, onProgress) => {
+  animateMarkerAlongPath: (map, coordinates, onProgress, mode = 'foot') => {
     if (Animation.animationFrame) {
       cancelAnimationFrame(Animation.animationFrame);
     }
 
-    const marker = Animation.createMovingMarker(map);
+    const marker = Animation.createMovingMarker(map, mode);
     marker.setLatLng([coordinates[0].lat, coordinates[0].lng]);
 
     let segmentIndex = 0;
     let t = 0; // 0 to 1, progress dalam segmen saat ini
-    const speed = 0.02; // Kecepatan animasi
+    
+    // Setup kecepatan sesuai mode transportasi
+    const modeSpeeds = {
+      foot: 0.008,     // Paling lambat
+      bike: 0.022,     // Sedang
+      driving: 0.038   // Paling cepat
+    };
+    
+    const speed = modeSpeeds[mode] || 0.008;
 
     const animate = () => {
       if (segmentIndex >= coordinates.length - 1) {
-        // Animasi selesai, tunjukkan marker tujuan
         setTimeout(() => {
           if (Animation.movingMarker) {
             Animation.movingMarker.remove();
@@ -160,13 +166,11 @@ const Animation = {
       const from = coordinates[segmentIndex];
       const to = coordinates[segmentIndex + 1];
 
-      // Interpolasi posisi antara dua node
       const lat = from.lat + (to.lat - from.lat) * t;
       const lng = from.lng + (to.lng - from.lng) * t;
 
       marker.setLatLng([lat, lng]);
 
-      // Notifikasi progress
       if (onProgress) onProgress(segmentIndex);
 
       t += speed;
@@ -180,15 +184,9 @@ const Animation = {
       Animation.animationFrame = requestAnimationFrame(animate);
     };
 
-    // Delay sebelum animasi mulai (biarkan polyline selesai dulu)
     setTimeout(animate, 500);
   },
 
-  /**
-   * Smooth zoom ke bounding box jalur
-   * @param {Object} map - Leaflet map instance
-   * @param {Array} latlngs - Array koordinat
-   */
   zoomToRoute: (map, latlngs) => {
     if (!latlngs || latlngs.length === 0) return;
     const bounds = L.latLngBounds(latlngs.map((c) => [c.lat, c.lng]));
@@ -199,23 +197,17 @@ const Animation = {
     });
   },
 
-  /**
-   * Hapus semua layer animasi
-   */
   clearAll: (map) => {
-    // Stop animasi berjalan
     if (Animation.animationFrame) {
       cancelAnimationFrame(Animation.animationFrame);
       Animation.animationFrame = null;
     }
 
-    // Hapus moving marker
     if (Animation.movingMarker) {
       Animation.movingMarker.remove();
       Animation.movingMarker = null;
     }
 
-    // Hapus polylines
     if (window._routePolyline) {
       window._routePolyline.remove();
       window._routePolyline = null;
@@ -225,7 +217,6 @@ const Animation = {
       window._routePolylineBg = null;
     }
 
-    // Hapus semua segment
     if (window._routeSegments) {
       window._routeSegments.forEach((s) => s.remove());
       window._routeSegments = [];
