@@ -1,6 +1,6 @@
 /**
  * public/js/map.js  —  UNIB Navigator
- * Floating bottom panel, transport modes, A* + OSRM routing
+ * Floating bottom panel, transport modes, A* + OSRM routing, Custom Dropdowns
  */
 
 // ==================== State ====================
@@ -12,7 +12,7 @@ const AppState = {
   startNodeId: null,
   endNodeId: null,
   currentPath: null,
-  transportMode: 'foot',   // foot | bike | driving
+  transportMode: 'foot',
   panelExpanded: false,
   locationPanelOpen: false,
   tileIndex: 0,
@@ -40,7 +40,7 @@ const initMap = () => {
   L.control.attribution({ prefix:false, position:'bottomleft' }).addTo(AppState.map);
 };
 
-// ==================== Marker Icons ====================
+// ==================== Marker Icons & Popup ====================
 const makeIcon = (type, id) => {
   const cfg = {
     default:  { bg:'rgba(0,210,180,0.8)',  border:'#00d2b4', shadow:'rgba(0,210,180,0.5)',  txt:'#021510' },
@@ -69,7 +69,6 @@ const makeIcon = (type, id) => {
   });
 };
 
-// ==================== Popup ====================
 const makePopup = (node) => `
   <div class="popup-body">
     <div class="popup-badge">NODE #${node.id_node}</div>
@@ -102,22 +101,130 @@ const updateMarkers = (pathIds = []) => {
   });
 };
 
+const getNodeName = (id) => AppState.nodes.find(n => n.id_node === parseInt(id))?.nama_tempat || `Node ${id}`;
+
+// ==================== Custom Dropdown Logic ====================
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.custom-wrap')) {
+    document.getElementById('dropdown-start')?.classList.remove('open');
+    document.getElementById('dropdown-end')?.classList.remove('open');
+  }
+});
+
+window.toggleDropdown = (type) => {
+  const other = type === 'start' ? 'end' : 'start';
+  document.getElementById(`dropdown-${other}`).classList.remove('open');
+  
+  const dd = document.getElementById(`dropdown-${type}`);
+  dd.classList.toggle('open');
+  if (dd.classList.contains('open')) {
+    const input = document.getElementById(`search-${type}`);
+    input.value = '';
+    filterDropdown(type);
+    input.focus();
+  }
+};
+
+window.selectNode = (type, id, name) => {
+  if (type === 'start') AppState.startNodeId = id;
+  else AppState.endNodeId = id;
+  
+  document.getElementById(`label-${type}`).textContent = name;
+  document.getElementById(`dropdown-${type}`).classList.remove('open');
+  updateMarkers();
+};
+
+window.filterDropdown = (type) => {
+  const q = document.getElementById(`search-${type}`).value.toLowerCase();
+  const items = document.querySelectorAll(`#list-${type} .dd-item`);
+  items.forEach(item => {
+    const text = item.querySelector('.dd-text').textContent.toLowerCase();
+    item.style.display = text.includes(q) ? '' : 'none';
+  });
+};
+
+const fillCustomDropdowns = (nodes) => {
+  const ls = document.getElementById('list-start');
+  const le = document.getElementById('list-end');
+  const icons = ['🏛','🏢','🏗','📚','⚽','🔬','🏥','🕌','💧','🎓','🏟','⚙️','📐','🌿','🏋','🖥','🌊','💊','🔭','🌾','🏀','🚪','🏟'];
+  
+  let html = '';
+  nodes.forEach((n, i) => {
+    const icon = icons[i % icons.length];
+    const safeName = n.nama_tempat.replace(/'/g, "\\'"); 
+    html += `
+      <div class="dd-item" onclick="selectNode('{{type}}', ${n.id_node}, '${safeName}')">
+        <div class="dd-icon">${icon}</div>
+        <div>
+          <div class="dd-text">${n.nama_tempat}</div>
+          <div class="dd-sub">NODE #${n.id_node}</div>
+        </div>
+      </div>
+    `;
+  });
+  
+  ls.innerHTML = html.replace(/{{type}}/g, 'start');
+  le.innerHTML = html.replace(/{{type}}/g, 'end');
+};
+
+// ==================== Actions (Start, End, Swap, Reset) ====================
 window.setStart = (id) => {
   AppState.startNodeId = id;
-  document.getElementById('select-start').value = id;
+  document.getElementById('label-start').textContent = getNodeName(id);
   updateMarkers();
   showToast(`🟢 ${getNodeName(id)} Titik Awal`, 'success');
   AppState.map.closePopup();
 };
+
 window.setEnd = (id) => {
   AppState.endNodeId = id;
-  document.getElementById('select-end').value = id;
+  document.getElementById('label-end').textContent = getNodeName(id);
   updateMarkers();
   showToast(`🟡 ${getNodeName(id)} Tujuan`, 'info');
   AppState.map.closePopup();
 };
 
-const getNodeName = (id) => AppState.nodes.find(n => n.id_node === parseInt(id))?.nama_tempat || `Node ${id}`;
+window.swapLocations = () => {
+  const tmpId = AppState.startNodeId;
+  AppState.startNodeId = AppState.endNodeId;
+  AppState.endNodeId = tmpId;
+
+  const lblStart = document.getElementById('label-start');
+  const lblEnd = document.getElementById('label-end');
+  const tmpTxt = lblStart.textContent;
+  lblStart.textContent = lblEnd.textContent;
+  lblEnd.textContent = tmpTxt;
+
+  updateMarkers();
+  if (AppState.startNodeId || AppState.endNodeId) showToast('↕ Lokasi ditukar', 'info');
+};
+
+window.resetRoute = () => {
+  AppState.startNodeId = null;
+  AppState.endNodeId   = null;
+  AppState.currentPath = null;
+  
+  document.getElementById('label-start').textContent = 'Titik Awal';
+  document.getElementById('label-end').textContent = 'Titik Tujuan';
+  
+  Animation.clearAll(AppState.map);
+  updateMarkers();
+  document.getElementById('result-panel').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.35">
+          <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+          <line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
+        </svg>
+      </div>
+      <div class="empty-title">Siap Navigasi</div>
+      <div class="empty-desc">Pilih titik awal & tujuan lalu tekan Cari</div>
+    </div>`;
+  AppState.panelExpanded = false;
+  document.getElementById('panel-expanded').classList.remove('open');
+  showResetFab(false);
+  showToast('Rute direset', 'info');
+};
 
 // ==================== Transport Mode ====================
 window.setTransportMode = (mode, btn) => {
@@ -128,23 +235,12 @@ window.setTransportMode = (mode, btn) => {
   const labels = { foot:'🚶 Jalan Kaki', bike:'🏍️ Motor', driving:'🚗 Mobil' };
   showToast(`Mode: ${labels[mode]}`, 'info');
 
-  // LANGSUNG RENDER ULANG RESULT JIKA PATH SUDAH ADA
   if (AppState.currentPath) {
     renderResult(AppState.currentPath);
   }
 };
 
 const osrmProfile = { foot:'foot', bike:'bike', driving:'driving' };
-
-window.swapLocations = () => {
-  const tmp = AppState.startNodeId;
-  AppState.startNodeId = AppState.endNodeId;
-  AppState.endNodeId = tmp;
-  document.getElementById('select-start').value = AppState.startNodeId || '';
-  document.getElementById('select-end').value   = AppState.endNodeId   || '';
-  updateMarkers();
-  if (AppState.startNodeId || AppState.endNodeId) showToast('↕ Lokasi ditukar', 'info');
-};
 
 window.togglePanelExpand = () => {
   AppState.panelExpanded = !AppState.panelExpanded;
@@ -153,17 +249,14 @@ window.togglePanelExpand = () => {
 
 // ==================== Find Path (CORE) ====================
 window.findPath = async () => {
-  const startId = parseInt(document.getElementById('select-start').value);
-  const endId   = parseInt(document.getElementById('select-end').value);
+  const startId = AppState.startNodeId;
+  const endId   = AppState.endNodeId;
 
   if (!startId || !endId)       { showToast('⚠️ Pilih titik awal dan tujuan', 'error'); return; }
   if (startId === endId)        { showToast('⚠️ Awal dan tujuan tidak boleh sama', 'error'); return; }
 
-  // KUNCI: Tambahkan class state agar panel bawah terkunci (compact)
   document.body.classList.add('is-searching');
   
-  AppState.startNodeId = startId;
-  AppState.endNodeId   = endId;
   showLoading(true, 'Algoritma A* sedang berjalan...');
   Animation.clearAll(AppState.map);
   clearResult();
@@ -190,7 +283,6 @@ window.findPath = async () => {
       roadCoords = result.path_names.map(p => ({ lat:p.lat, lng:p.lng }));
     }
 
-    // Animasi dieksekusi dengan mengirimkan AppState.transportMode
     Animation.animatePolyline(AppState.map, roadCoords);
     setTimeout(() => Animation.zoomToRoute(AppState.map, roadCoords), 300);
     setTimeout(() => Animation.animateMarkerAlongPath(
@@ -201,11 +293,10 @@ window.findPath = async () => {
         const ni = Math.floor(ratio * result.path_names.length);
         document.querySelectorAll('.path-step').forEach((el, i) => el.classList.toggle('active', i === ni));
       },
-      AppState.transportMode // Pass mode transportasi ke animasi
+      AppState.transportMode 
     ), 1000);
 
     renderResult(result);
-    // openPanel(); <--- Dihapus agar panel tetap di bawah (tidak menutupi map)
     showResetFab(true);
     
     const dynamicTime = calculateEstimatedTime(result.distance, AppState.transportMode);
@@ -214,19 +305,17 @@ window.findPath = async () => {
   } catch(err) {
     showToast(`❌ ${err.message}`, 'error');
   } finally {
-    // KUNCI: Hapus class state setelah proses komputasi selesai
     document.body.classList.remove('is-searching');
     showLoading(false);
   }
 };
 
 // ==================== Render Result ====================
-// Helper untuk menghitung estimasi waktu di frontend
 const calculateEstimatedTime = (distanceMeters, mode) => {
   const speeds = {
-    foot: 80,      // ~4.8 km/jam
-    bike: 300,     // ~18 km/jam
-    driving: 400   // ~24 km/jam
+    foot: 80,      
+    bike: 300,     
+    driving: 400   
   };
   
   const speed = speeds[mode] || speeds.foot;
@@ -303,44 +392,7 @@ window.flyToNode = (id) => {
   setTimeout(() => m.openPopup(), 1100);
 };
 
-window.resetRoute = () => {
-  AppState.startNodeId = null;
-  AppState.endNodeId   = null;
-  AppState.currentPath = null;
-  document.getElementById('select-start').value = '';
-  document.getElementById('select-end').value   = '';
-  Animation.clearAll(AppState.map);
-  updateMarkers();
-  document.getElementById('result-panel').innerHTML = `
-    <div class="empty-state">
-      <div class="empty-icon">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.35">
-          <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
-          <line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
-        </svg>
-      </div>
-      <div class="empty-title">Siap Navigasi</div>
-      <div class="empty-desc">Pilih titik awal & tujuan lalu tekan Cari</div>
-    </div>`;
-  AppState.panelExpanded = false;
-  document.getElementById('panel-expanded').classList.remove('open');
-  showResetFab(false);
-  showToast('Rute direset', 'info');
-};
-
-const fillDropdowns = (nodes) => {
-  const s = document.getElementById('select-start');
-  const e = document.getElementById('select-end');
-  const def = '<option value="">Pilih Lokasi</option>';
-  s.innerHTML = def; e.innerHTML = def;
-  nodes.forEach(n => {
-    const o = `<option value="${n.id_node}">${n.id_node}. ${n.nama_tempat}</option>`;
-    s.innerHTML += o; e.innerHTML += o;
-  });
-  s.addEventListener('change', () => { AppState.startNodeId = parseInt(s.value)||null; updateMarkers(); });
-  e.addEventListener('change', () => { AppState.endNodeId   = parseInt(e.value)||null; updateMarkers(); });
-};
-
+// ==================== Location Panel ====================
 const fillLocations = (nodes) => {
   const icons = ['🏛','🏢','🏗','📚','⚽','🔬','🏥','🕌','💧','🎓','🏟','⚙️','📐','🌿','🏋','🖥','🌊','💊','🔭','🌾','🏀','🚪','🏟'];
   document.getElementById('location-list').innerHTML = nodes.map((n,i) => `
@@ -365,6 +417,7 @@ window.toggleLocationPanel = () => {
   document.getElementById('location-panel').classList.toggle('open', AppState.locationPanelOpen);
 };
 
+// ==================== Controls ====================
 window.toggleMapLayer = () => {
   tiles[AppState.tileIndex].remove();
   AppState.tileIndex = (AppState.tileIndex + 1) % tiles.length;
@@ -378,11 +431,14 @@ window.getCurrentLocation = () => {
   navigator.geolocation.getCurrentPosition(pos => {
     const { latitude: lat, longitude: lng } = pos.coords;
     AppState.map.flyTo([lat, lng], 17, { duration:1.5 });
+    
+    // Menerapkan class "std-popup" agar aman dan terbaca
     L.marker([lat, lng], { icon: L.divIcon({
       className:'',
       html:`<div style="width:14px;height:14px;background:#3b82f6;border:3px solid #fff;border-radius:50%;box-shadow:0 0 16px #3b82f6;"></div>`,
       iconSize:[14,14], iconAnchor:[7,7],
-    }) }).addTo(AppState.map).bindPopup(' Lokasi Anda').openPopup();
+    }) }).addTo(AppState.map).bindPopup('📍 Lokasi Anda', { className: 'std-popup' }).openPopup();
+    
     showToast(' Lokasi ditemukan', 'success');
   }, () => showToast(' Tidak bisa akses lokasi', 'error'));
 };
@@ -416,6 +472,7 @@ const showLoading = (show, sub='') => {
   if (sub) document.getElementById('loading-sub').textContent = sub;
 };
 
+// ==================== Init App ====================
 const initApp = async () => {
   showLoading(true, 'Memuat data kampus UNIB...');
   try {
@@ -424,8 +481,10 @@ const initApp = async () => {
     AppState.nodes = nodes;
     AppState.edges = edges;
     addMarkers(nodes);
-    fillDropdowns(nodes);
+    
+    fillCustomDropdowns(nodes); 
     fillLocations(nodes);
+    
     showToast(` ${nodes.length} lokasi UNIB dimuat`, 'success');
   } catch(err) {
     showToast(`Gagal memuat: ${err.message}`, 'error');

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>UNIB Navigator | A* Pathfinding</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/style.css?v=4" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300d2b4' stroke-width='2'><circle cx='12' cy='12' r='10'/><polygon points='10 8 16 12 10 16 10 8'/></svg>" />
 </head>
 <body>
@@ -99,11 +99,18 @@
     </div>
 
     <div class="inputs-row">
-      <div class="input-wrap">
+      <div class="input-wrap custom-wrap" id="wrap-start">
         <div class="input-dot start-dot"></div>
-        <select id="select-start" class="route-select">
-          <option value="">Titik Awal</option>
-        </select>
+        <div class="custom-trigger" onclick="toggleDropdown('start')">
+          <span id="label-start">Titik Awal</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+        <div class="custom-dropdown" id="dropdown-start">
+          <div class="dropdown-search">
+            <input type="text" id="search-start" placeholder="Cari titik awal..." oninput="filterDropdown('start')" autocomplete="off">
+          </div>
+          <div class="dropdown-list" id="list-start"></div>
+        </div>
       </div>
 
       <button class="swap-btn" onclick="swapLocations()" title="Tukar Lokasi">
@@ -113,11 +120,18 @@
         </svg>
       </button>
 
-      <div class="input-wrap">
+      <div class="input-wrap custom-wrap" id="wrap-end">
         <div class="input-dot end-dot"></div>
-        <select id="select-end" class="route-select">
-          <option value="">Titik Tujuan</option>
-        </select>
+        <div class="custom-trigger" onclick="toggleDropdown('end')">
+          <span id="label-end">Titik Tujuan</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+        <div class="custom-dropdown" id="dropdown-end">
+          <div class="dropdown-search">
+            <input type="text" id="search-end" placeholder="Cari titik tujuan..." oninput="filterDropdown('end')" autocomplete="off">
+          </div>
+          <div class="dropdown-list" id="list-end"></div>
+        </div>
       </div>
 
       <button class="go-btn" id="search-btn" onclick="findPath()">
@@ -206,8 +220,8 @@
 <div class="toast-stack" id="toast-container"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/js/api.js"></script>
-<script src="/js/animation.js"></script>
-<script src="/js/map.js"></script>
+<script src="/js/api.js?v=3"></script>
+<script src="/js/animation.js?v=3"></script>
+<script src="/js/map.js?v=3"></script>
 </body>
 </html>
