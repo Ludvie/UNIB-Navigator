@@ -461,7 +461,7 @@ const showResetFab = (v) => {
 
 window.showToast = (msg, type='info') => {
   const c = document.getElementById('toast-container');
-  const ic = { success:'success', error:'error', info:'' };
+  const ic = { success:'', error:'', info:'' };
   const t = document.createElement('div');
   t.className = `toast ${type}`;
   t.innerHTML = `<span>${ic[type]||''}</span><span>${msg}</span>`;
