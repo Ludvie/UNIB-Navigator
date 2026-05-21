@@ -336,6 +336,9 @@ const renderResult = (result) => {
   const panel = document.getElementById('result-panel');
   
   const dynamicTime = calculateEstimatedTime(result.distance, AppState.transportMode);
+  
+  // PENANGKAP RUNTIME: Mencegah undefined jika format response API berbeda
+  const exeTime = result.executionTime ?? result.execution_time_ms ?? result.execution_time ?? 0;
 
   panel.innerHTML = `
     <div class="stats-grid">
@@ -356,7 +359,7 @@ const renderResult = (result) => {
       </div>
       <div class="stat-card" style="animation-delay:.18s">
         <div class="stat-lbl">Runtime</div>
-        <div class="stat-val sm">${result.execution_time_ms}ms</div>
+        <div class="stat-val sm">${exeTime}ms</div>
         <div class="stat-unit">A* algo</div>
       </div>
     </div>
