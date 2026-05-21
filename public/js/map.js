@@ -232,7 +232,7 @@ window.setTransportMode = (mode, btn) => {
   document.querySelectorAll('.transport-pill').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
 
-  const labels = { foot:'🚶 Jalan Kaki', bike:'🏍️ Motor', driving:'🚗 Mobil' };
+  const labels = { foot:'Jalan Kaki', bike:'Motor', driving:'Mobil' };
   showToast(`Mode: ${labels[mode]}`, 'info');
 
   if (AppState.currentPath) {
@@ -300,10 +300,10 @@ window.findPath = async () => {
     showResetFab(true);
     
     const dynamicTime = calculateEstimatedTime(result.distance, AppState.transportMode);
-    showToast(`✅ ${result.path.length} lokasi · ${result.distance}m · ${dynamicTime}`, 'success');
+    showToast(` ${result.path.length} lokasi · ${result.distance}m · ${dynamicTime}`, 'success');
 
   } catch(err) {
-    showToast(`❌ ${err.message}`, 'error');
+    showToast(` ${err.message}`, 'error');
   } finally {
     document.body.classList.remove('is-searching');
     showLoading(false);
@@ -461,10 +461,10 @@ const showResetFab = (v) => {
 
 window.showToast = (msg, type='info') => {
   const c = document.getElementById('toast-container');
-  const ic = { success:'✅', error:'❌', info:'💡' };
+  const ic = { success:'success', error:'error', info:'' };
   const t = document.createElement('div');
   t.className = `toast ${type}`;
-  t.innerHTML = `<span>${ic[type]||'💬'}</span><span>${msg}</span>`;
+  t.innerHTML = `<span>${ic[type]||''}</span><span>${msg}</span>`;
   c.appendChild(t);
   setTimeout(() => t.remove(), 3700);
 };
