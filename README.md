@@ -68,7 +68,7 @@ PORT=3000
 npm start
 ```
 
-Akses di browser: **http://localhost:3000**
+Akses di browser: **unib-navigator.up.railway.app**
 
 ---
 
