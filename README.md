@@ -4,13 +4,13 @@ Link Deploy : unib-navigator.up.railway.app
 
 > Sistem pencarian rute terpendek area **Universitas Bengkulu (UNIB)** menggunakan **Algoritma A\*** dengan visualisasi realtime pada peta interaktif Leaflet + OpenStreetMap.
 
-![UNIB Navigator Banner](images/banner-placeholder.png)
+![UNIB Navigator Banner](images/banner.png)
 
 ---
 
 ## 📋 Deskripsi
 
-Aplikasi web navigasi kampus yang membantu sivitas akademika UNIB menemukan **jalur tercepat dan terpendek** antar gedung/fasilitas kampus. Sistem menggunakan algoritma A* dengan heuristic Euclidean Distance untuk akurasi optimal.
+Aplikasi web navigasi kampus yang membantu sivitas akademika UNIB menemukan **jalur tercepat dan terpendek** antar gedung/fasilitas kampus. Sistem menggunakan algoritma A* dengan heuristic Euclidean D[...]
 
 **Fitur Utama:**
 - 🗺️ Peta interaktif fullscreen (Leaflet + OpenStreetMap)
@@ -315,4 +315,3 @@ curl http://localhost:3000/api/accuracy-test
 | Database | MySQL 8.0 |
 | Algoritma | A* Search + MinHeap Priority Queue |
 | Fonts | Syne + JetBrains Mono |
-
