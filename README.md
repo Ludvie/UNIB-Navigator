@@ -1,5 +1,7 @@
 # 🗺️ UNIB Navigator — A* Shortest Path System
 
+Link Deploy : unib-navigator.up.railway.app
+
 > Sistem pencarian rute terpendek area **Universitas Bengkulu (UNIB)** menggunakan **Algoritma A\*** dengan visualisasi realtime pada peta interaktif Leaflet + OpenStreetMap.
 
 ![UNIB Navigator Banner](images/banner-placeholder.png)
@@ -68,7 +70,7 @@ PORT=3000
 npm start
 ```
 
-Akses di browser: **unib-navigator.up.railway.app**
+Akses di browser: **localhost**
 
 ---
 
@@ -314,23 +316,3 @@ curl http://localhost:3000/api/accuracy-test
 | Algoritma | A* Search + MinHeap Priority Queue |
 | Fonts | Syne + JetBrains Mono |
 
----
-
-## 📸 Screenshot
-
-> _Screenshot akan ditambahkan setelah aplikasi berjalan_
-
-![Screenshot Peta](images/screenshot-map.png)
-![Screenshot Hasil Rute](images/screenshot-result.png)
-
----
-
-## 👥 Tim Pengembang
-
-Dibuat sebagai proyek sistem navigasi kampus **Universitas Bengkulu**.
-
----
-
-## 📄 Lisensi
-
-MIT License — bebas digunakan untuk keperluan akademik.
